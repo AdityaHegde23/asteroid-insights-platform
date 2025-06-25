@@ -1,0 +1,245 @@
+# Azure DevOps Pipeline for Asteroid Insights Platform
+# This pipeline demonstrates CI/CD best practices with manual and automatic triggers
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - src/**
+    - tests/**
+    - requirements.txt
+    - azure-pipelines.yml
+
+# Manual trigger with parameters
+parameters:
+- name: pipelineType
+  displayName: 'Pipeline Type'
+  type: string
+  default: 'auto'
+  values:
+  - auto
+  - manual-full
+  - manual-incremental
+  - manual-validation
+
+- name: environment
+  displayName: 'Environment'
+  type: string
+  default: 'dev'
+  values:
+  - dev
+  - staging
+  - prod
+
+variables:
+  pythonVersion: '3.8'
+  resourceGroupName: 'asteroid-insights-rg'
+  location: 'East US'
+  storageAccountName: 'asteroiddata$(Build.BuildId)'
+  functionAppName: 'asteroid-processor-$(environment)'
+  sqlServerName: 'asteroid-sql-$(environment)'
+  databaseName: 'asteroid_insights'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: BuildAndTest
+    displayName: 'Build and Test Application'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+      displayName: 'Set up Python'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+
+    - script: |
+        python -m pytest tests/ --junitxml=test-results.xml --cov=src --cov-report=xml
+      displayName: 'Run tests with coverage'
+      env:
+        NASA_API_KEY: $(NASA_API_KEY)
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'test-results.xml'
+        mergeTestResults: true
+        testRunTitle: 'Asteroid Insights Tests'
+      condition: succeededOrFailed()
+
+    - task: PublishCodeCoverageResults@1
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: 'coverage.xml'
+        reportDirectory: 'htmlcov'
+      condition: succeededOrFailed()
+
+    - script: |
+        python -m flake8 src/ --max-line-length=120 --format=html --htmldir=flake8-report
+      displayName: 'Code quality check'
+      continueOnError: true
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'src/'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/asteroid-app.zip'
+        replaceExistingArchive: true
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'drop'
+
+- stage: DeployInfrastructure
+  displayName: 'Deploy Infrastructure'
+  dependsOn: Build
+  condition: and(succeeded(), eq('${{ parameters.pipelineType }}', 'manual-full'))
+  jobs:
+  - deployment: DeployInfrastructure
+    displayName: 'Deploy Azure Resources'
+    environment: $(environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'Azure Subscription'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group create \
+                  --resource-group $(resourceGroupName) \
+                  --template-file infrastructure/main.bicep \
+                  --parameters @infrastructure/parameters.json \
+                  --parameters environment=$(environment) \
+                  --parameters location=$(location)
+            displayName: 'Deploy Azure Resources with Bicep'
+
+- stage: DeployApplication
+  displayName: 'Deploy Application'
+  dependsOn: Build
+  jobs:
+  - deployment: DeployToAzure
+    displayName: 'Deploy to Azure'
+    environment: $(environment)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureFunctionApp@1
+            inputs:
+              azureSubscription: 'Azure Subscription'
+              appName: $(functionAppName)
+              package: '$(Pipeline.Workspace)/drop/asteroid-app.zip'
+              appType: 'functionApp'
+            displayName: 'Deploy Azure Function'
+
+- stage: DataProcessing
+  displayName: 'Process Asteroid Data'
+  dependsOn: DeployApplication
+  jobs:
+  - job: ProcessData
+    displayName: 'Process Asteroid Data'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+
+    - script: |
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+
+    - script: |
+        python src/asteroid_processor.py --mode ${{ parameters.pipelineType }}
+      displayName: 'Process asteroid data'
+      env:
+        NASA_API_KEY: $(NASA_API_KEY)
+        AZURE_STORAGE_CONNECTION_STRING: $(AZURE_STORAGE_CONNECTION_STRING)
+        AZURE_SQL_CONNECTION_STRING: $(AZURE_SQL_CONNECTION_STRING)
+
+    - script: |
+        python src/generate_report.py --environment $(environment)
+      displayName: 'Generate insights report'
+      env:
+        AZURE_SQL_CONNECTION_STRING: $(AZURE_SQL_CONNECTION_STRING)
+
+- stage: Validation
+  displayName: 'Validation and Monitoring'
+  dependsOn: DataProcessing
+  jobs:
+  - job: ValidateDeployment
+    displayName: 'Validate Deployment'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - script: |
+        # Health check for deployed applications
+        curl -f $(AZURE_FUNCTION_URL)/health || exit 1
+      displayName: 'Health checks'
+      env:
+        AZURE_FUNCTION_URL: $(AZURE_FUNCTION_URL)
+
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'Azure Subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Monitor resource usage
+          az monitor metrics list \
+            --resource-group $(resourceGroupName) \
+            --resource $(functionAppName) \
+            --metric CPUPercentage,MemoryPercentage \
+            --interval PT1H
+      displayName: 'Resource monitoring'
+
+- stage: Notification
+  displayName: 'Notifications'
+  dependsOn: Validation
+  condition: always()
+  jobs:
+  - job: SendNotifications
+    displayName: 'Send Notifications'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $status = "$(Agent.JobStatus)"
+          $pipelineName = "$(Build.DefinitionName)"
+          $buildNumber = "$(Build.BuildNumber)"
+          
+          Write-Host "Pipeline $pipelineName (Build $buildNumber) completed with status: $status"
+          
+          # Add your notification logic here (Teams, Slack, Email, etc.)
+          if ($status -eq "Succeeded") {
+            Write-Host "✅ Pipeline completed successfully!"
+          } else {
+            Write-Host "❌ Pipeline failed!"
+          }
+      displayName: 'Pipeline status notification'

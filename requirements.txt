@@ -1,0 +1,83 @@
+# Asteroid Insights Platform - Python Dependencies
+# ETL pipeline for processing asteroid data from NASA API to Azure SQL Database
+
+# Core Python packages
+requests==2.31.0                    # HTTP requests for NASA API
+python-dateutil==2.8.2             # Date parsing and manipulation
+pytz==2023.3                       # Timezone handling
+
+# Azure SDK packages
+azure-storage-blob==12.19.0        # Azure Blob Storage operations
+azure-functions==1.17.0            # Azure Functions runtime
+azure-identity==1.15.0             # Azure authentication
+azure-keyvault-secrets==4.7.0      # Azure Key Vault integration
+
+# Database connectivity
+pyodbc==5.0.1                      # SQL Server/Azure SQL Database connection
+sqlalchemy==2.0.23                 # SQL toolkit and ORM (optional, for advanced queries)
+
+# Data processing
+pandas==2.1.4                      # Data manipulation and analysis
+numpy==1.24.3                      # Numerical computing
+
+# JSON and configuration
+jsonschema==4.20.0                 # JSON validation
+python-dotenv==1.0.0               # Environment variable management
+
+# Logging and monitoring
+structlog==23.2.0                  # Structured logging
+azure-monitor-opentelemetry==1.0.0 # Azure monitoring
+
+# Testing and development
+pytest==7.4.3                      # Testing framework
+pytest-cov==4.1.0                  # Coverage reporting
+pytest-mock==3.12.0                # Mocking for tests
+flake8==6.1.0                      # Code linting
+black==23.11.0                     # Code formatting
+
+# Type checking
+mypy==1.7.1                        # Static type checking
+types-requests==2.31.0.10          # Type stubs for requests
+
+# Documentation
+sphinx==7.2.6                      # Documentation generator
+sphinx-rtd-theme==1.3.0            # Read the Docs theme
+
+# Development tools
+pre-commit==3.5.0                  # Git hooks for code quality
+jupyter==1.0.0                     # Jupyter notebooks for analysis
+matplotlib==3.8.2                  # Plotting (for data visualization)
+seaborn==0.13.0                    # Statistical data visualization
+
+# Security
+cryptography==41.0.8               # Cryptographic recipes
+certifi==2023.11.17                # SSL certificates
+
+# Performance
+psutil==5.9.6                      # System and process utilities
+memory-profiler==0.61.0            # Memory usage profiling
+
+# Error handling and resilience
+tenacity==8.2.3                    # Retry logic
+circuitbreaker==1.3.2              # Circuit breaker pattern
+
+# Data validation
+marshmallow==3.20.1                # Data serialization and validation
+cerberus==1.3.5                    # Data validation
+
+# Configuration management
+pyyaml==6.0.1                      # YAML configuration files
+configparser==6.0.0                # Configuration file parser
+
+# HTTP and API
+httpx==0.25.2                      # Modern HTTP client
+aiohttp==3.9.1                     # Async HTTP client (for performance)
+
+# Date and time
+arrow==1.3.0                       # Better date handling
+pendulum==3.0.0                    # Python datetimes made easy
+
+# Utilities
+click==8.1.7                       # Command line interface
+rich==13.7.0                       # Rich text and formatting
+tqdm==4.66.1                       # Progress bars
