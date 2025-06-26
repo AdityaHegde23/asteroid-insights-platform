@@ -2,15 +2,6 @@
 -- This schema supports the ETL pipeline from NASA API to Azure SQL Database
 -- Calculations and processing happen in Python ETL code, not in SQL
 
--- Create database if it doesn't exist
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'asteroid_insights')
-BEGIN
-    CREATE DATABASE asteroid_insights;
-END
-GO
-
-USE asteroid_insights;
-GO
 
 -- Raw asteroid data table (exactly as received from NASA API)
 CREATE TABLE raw_asteroid_data (
@@ -118,8 +109,7 @@ SELECT
     p.recommended_action
 FROM raw_asteroid_data r
 LEFT JOIN processed_asteroid_insights p ON r.id = p.raw_asteroid_id
-WHERE r.is_potentially_hazardous_asteroid = 1
-ORDER BY p.risk_score DESC;
+WHERE r.is_potentially_hazardous_asteroid = 1;
 GO
 
 CREATE VIEW v_high_risk_asteroids AS
@@ -136,8 +126,7 @@ SELECT
     p.days_to_approach
 FROM raw_asteroid_data r
 INNER JOIN processed_asteroid_insights p ON r.id = p.raw_asteroid_id
-WHERE p.risk_score >= 0.7
-ORDER BY p.risk_score DESC, r.close_approach_date ASC;
+WHERE p.risk_score >= 0.7;
 GO
 
 CREATE VIEW v_asteroid_summary AS

@@ -50,7 +50,7 @@ matplotlib==3.8.2                  # Plotting (for data visualization)
 seaborn==0.13.0                    # Statistical data visualization
 
 # Security
-cryptography==41.0.8               # Cryptographic recipes
+cryptography>=41.0.8               # Cryptographic recipes
 certifi==2023.11.17                # SSL certificates
 
 # Performance

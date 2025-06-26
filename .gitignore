@@ -185,3 +185,5 @@ site/
 # Azure DevOps artifacts
 .vsts/
 .azure-pipelines/
+
+.sql_password

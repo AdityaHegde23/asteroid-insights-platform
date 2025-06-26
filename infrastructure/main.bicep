@@ -11,7 +11,7 @@ param storageAccountName string = 'asteroiddata${uniqueString(resourceGroup().id
 param sqlServerName string = 'asteroid-sql-${environment}'
 
 @description('SQL Database name')
-param databaseName string = 'asteroid_insights'
+param databaseName string = 'asteroid_insight'
 
 @description('Function App name')
 param functionAppName string = 'asteroid-processor-${environment}'

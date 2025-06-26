@@ -5,6 +5,9 @@ Asteroid Insights Platform - Main ETL Processor
 This module processes asteroid data from NASA's API and stores insights
 in Azure SQL Database. Raw data is stored in Azure Blob Storage.
 """
+from dotenv import load_dotenv
+import os
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
 import argparse
 import json

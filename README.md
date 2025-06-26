@@ -1,6 +1,6 @@
 # Asteroid Insights Platform
 
-A comprehensive Azure cloud-based data processing pipeline that fetches asteroid data from NASA's API, processes it through ETL pipelines, and stores insights in Azure SQL Database. This project demonstrates Azure DevOps CI/CD, Infrastructure as Code (Bicep), and cloud-native data processing.
+A comprehensive Azure cloud-based data processing pipeline that fetches asteroid data from NASA's API, processes it through ETL pipelines, and stores insights in Azure SQL Database.
 
 ## 🎯 Project Overview
 
