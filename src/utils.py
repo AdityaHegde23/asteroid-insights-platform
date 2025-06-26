@@ -48,7 +48,7 @@ def calculate_risk_score(diameter_data: Dict, miss_distance: Dict, velocity: Dic
     """
     try:
         # Extract values
-        diameter_km = diameter_data.get('kilometers', {}).get('estimated_diameter_max', 0)
+        diameter_km = float(diameter_data.get('kilometers', {}).get('estimated_diameter_max', 0))
         miss_distance_km = float(miss_distance.get('kilometers', 0))
         velocity_kmh = float(velocity.get('kilometers_per_hour', 0))
         

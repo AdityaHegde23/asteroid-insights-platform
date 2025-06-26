@@ -303,10 +303,17 @@ class AsteroidProcessor:
                     datetime.now()
                 )
                 
-                cursor.execute(sql, values)
+                try:
+                    cursor.execute(sql, values)
+                except pyodbc.IntegrityError as e:
+                    if '23000' in str(e) and 'duplicate key' in str(e).lower():
+                        logger.warning(f"Duplicate asteroid id {asteroid.get('id')} skipped.")
+                        continue
+                    else:
+                        raise
             
             connection.commit()
-            logger.info(f"Successfully stored {len(asteroid_data)} records in SQL Database")
+            logger.info(f"Successfully stored {len(asteroid_data)} records in SQL Database (duplicates skipped)")
             
         except Exception as e:
             connection.rollback()
