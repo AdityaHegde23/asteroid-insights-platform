@@ -226,25 +226,100 @@ class AsteroidProcessor:
                 close_approach_data = asteroid.get('close_approach_data', [{}])[0] if asteroid.get('close_approach_data') else {}
                 orbital_data = asteroid.get('orbital_data', {})
                 
-                # Prepare SQL insert statement
+                # Use MERGE (UPSERT) to handle duplicates and update with latest data
                 sql = """
-                INSERT INTO raw_asteroid_data (
-                    id, name, nasa_jpl_url, absolute_magnitude_h,
-                    estimated_diameter_min_km, estimated_diameter_max_km,
-                    is_potentially_hazardous_asteroid, is_sentry_object,
-                    close_approach_date, close_approach_full,
-                    epoch_osculation, eccentricity, semi_major_axis, inclination,
-                    ascending_node_longitude, orbital_period, perihelion_distance,
-                    perihelion_argument, aphelion_distance, perihelion_time,
-                    mean_anomaly, mean_motion, equinox, orbit_determination_date,
-                    orbit_uncertainty, minimum_orbit_intersection,
-                    jupiter_tisserand_invariant, earth_minimum_orbit_intersection_distance,
-                    orbit_id, object_designation, close_approach_epoch_unix,
-                    relative_velocity_km_per_sec, relative_velocity_km_per_hour,
-                    relative_velocity_miles_per_hour, miss_distance_astronomical,
-                    miss_distance_lunar, miss_distance_kilometers, orbiting_body,
-                    nasa_data_json, fetched_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                MERGE raw_asteroid_data AS target
+                USING (SELECT ? as id, ? as name, ? as nasa_jpl_url, ? as absolute_magnitude_h,
+                              ? as estimated_diameter_min_km, ? as estimated_diameter_max_km,
+                              ? as is_potentially_hazardous_asteroid, ? as is_sentry_object,
+                              ? as close_approach_date, ? as close_approach_full,
+                              ? as epoch_osculation, ? as eccentricity, ? as semi_major_axis,
+                              ? as inclination, ? as ascending_node_longitude, ? as orbital_period,
+                              ? as perihelion_distance, ? as perihelion_argument, ? as aphelion_distance,
+                              ? as perihelion_time, ? as mean_anomaly, ? as mean_motion,
+                              ? as equinox, ? as orbit_determination_date, ? as orbit_uncertainty,
+                              ? as minimum_orbit_intersection, ? as jupiter_tisserand_invariant,
+                              ? as earth_minimum_orbit_intersection_distance, ? as orbit_id,
+                              ? as object_designation, ? as close_approach_epoch_unix,
+                              ? as relative_velocity_km_per_sec, ? as relative_velocity_km_per_hour,
+                              ? as relative_velocity_miles_per_hour, ? as miss_distance_astronomical,
+                              ? as miss_distance_lunar, ? as miss_distance_kilometers,
+                              ? as orbiting_body, ? as nasa_data_json, ? as fetched_at) AS source
+                ON target.id = source.id
+                WHEN MATCHED THEN
+                    UPDATE SET 
+                        name = source.name,
+                        nasa_jpl_url = source.nasa_jpl_url,
+                        absolute_magnitude_h = source.absolute_magnitude_h,
+                        estimated_diameter_min_km = source.estimated_diameter_min_km,
+                        estimated_diameter_max_km = source.estimated_diameter_max_km,
+                        is_potentially_hazardous_asteroid = source.is_potentially_hazardous_asteroid,
+                        is_sentry_object = source.is_sentry_object,
+                        close_approach_date = source.close_approach_date,
+                        close_approach_full = source.close_approach_full,
+                        epoch_osculation = source.epoch_osculation,
+                        eccentricity = source.eccentricity,
+                        semi_major_axis = source.semi_major_axis,
+                        inclination = source.inclination,
+                        ascending_node_longitude = source.ascending_node_longitude,
+                        orbital_period = source.orbital_period,
+                        perihelion_distance = source.perihelion_distance,
+                        perihelion_argument = source.perihelion_argument,
+                        aphelion_distance = source.aphelion_distance,
+                        perihelion_time = source.perihelion_time,
+                        mean_anomaly = source.mean_anomaly,
+                        mean_motion = source.mean_motion,
+                        equinox = source.equinox,
+                        orbit_determination_date = source.orbit_determination_date,
+                        orbit_uncertainty = source.orbit_uncertainty,
+                        minimum_orbit_intersection = source.minimum_orbit_intersection,
+                        jupiter_tisserand_invariant = source.jupiter_tisserand_invariant,
+                        earth_minimum_orbit_intersection_distance = source.earth_minimum_orbit_intersection_distance,
+                        orbit_id = source.orbit_id,
+                        object_designation = source.object_designation,
+                        close_approach_epoch_unix = source.close_approach_epoch_unix,
+                        relative_velocity_km_per_sec = source.relative_velocity_km_per_sec,
+                        relative_velocity_km_per_hour = source.relative_velocity_km_per_hour,
+                        relative_velocity_miles_per_hour = source.relative_velocity_miles_per_hour,
+                        miss_distance_astronomical = source.miss_distance_astronomical,
+                        miss_distance_lunar = source.miss_distance_lunar,
+                        miss_distance_kilometers = source.miss_distance_kilometers,
+                        orbiting_body = source.orbiting_body,
+                        nasa_data_json = source.nasa_data_json,
+                        fetched_at = source.fetched_at,
+                        updated_at = GETUTCDATE()
+                WHEN NOT MATCHED THEN
+                    INSERT (id, name, nasa_jpl_url, absolute_magnitude_h,
+                           estimated_diameter_min_km, estimated_diameter_max_km,
+                           is_potentially_hazardous_asteroid, is_sentry_object,
+                           close_approach_date, close_approach_full,
+                           epoch_osculation, eccentricity, semi_major_axis, inclination,
+                           ascending_node_longitude, orbital_period, perihelion_distance,
+                           perihelion_argument, aphelion_distance, perihelion_time,
+                           mean_anomaly, mean_motion, equinox, orbit_determination_date,
+                           orbit_uncertainty, minimum_orbit_intersection,
+                           jupiter_tisserand_invariant, earth_minimum_orbit_intersection_distance,
+                           orbit_id, object_designation, close_approach_epoch_unix,
+                           relative_velocity_km_per_sec, relative_velocity_km_per_hour,
+                           relative_velocity_miles_per_hour, miss_distance_astronomical,
+                           miss_distance_lunar, miss_distance_kilometers, orbiting_body,
+                           nasa_data_json, fetched_at)
+                    VALUES (source.id, source.name, source.nasa_jpl_url, source.absolute_magnitude_h,
+                           source.estimated_diameter_min_km, source.estimated_diameter_max_km,
+                           source.is_potentially_hazardous_asteroid, source.is_sentry_object,
+                           source.close_approach_date, source.close_approach_full,
+                           source.epoch_osculation, source.eccentricity, source.semi_major_axis,
+                           source.inclination, source.ascending_node_longitude, source.orbital_period,
+                           source.perihelion_distance, source.perihelion_argument, source.aphelion_distance,
+                           source.perihelion_time, source.mean_anomaly, source.mean_motion,
+                           source.equinox, source.orbit_determination_date, source.orbit_uncertainty,
+                           source.minimum_orbit_intersection, source.jupiter_tisserand_invariant,
+                           source.earth_minimum_orbit_intersection_distance, source.orbit_id,
+                           source.object_designation, source.close_approach_epoch_unix,
+                           source.relative_velocity_km_per_sec, source.relative_velocity_km_per_hour,
+                           source.relative_velocity_miles_per_hour, source.miss_distance_astronomical,
+                           source.miss_distance_lunar, source.miss_distance_kilometers,
+                           source.orbiting_body, source.nasa_data_json, source.fetched_at);
                 """
                 
                 # Extract diameter values
@@ -305,15 +380,13 @@ class AsteroidProcessor:
                 
                 try:
                     cursor.execute(sql, values)
-                except pyodbc.IntegrityError as e:
-                    if '23000' in str(e) and 'duplicate key' in str(e).lower():
-                        logger.warning(f"Duplicate asteroid id {asteroid.get('id')} skipped.")
-                        continue
-                    else:
-                        raise
+                    logger.debug(f"Raw data for asteroid {asteroid.get('id')} ({'updated' if cursor.rowcount > 0 else 'inserted'})")
+                except Exception as e:
+                    logger.error(f"Error storing raw data for asteroid {asteroid.get('id')}: {e}")
+                    raise
             
             connection.commit()
-            logger.info(f"Successfully stored {len(asteroid_data)} records in SQL Database (duplicates skipped)")
+            logger.info(f"Successfully stored raw data for {len(asteroid_data)} asteroids (duplicates handled via UPSERT)")
             
         except Exception as e:
             connection.rollback()
@@ -337,15 +410,49 @@ class AsteroidProcessor:
                 # Calculate insights
                 insights = self._calculate_insights(asteroid)
                 
-                # Prepare SQL insert statement
+                # Use MERGE (UPSERT) to handle duplicates
                 sql = """
-                INSERT INTO processed_asteroid_insights (
-                    raw_asteroid_id, name, risk_score, hazard_level, size_category,
-                    orbit_type, inclination_type, velocity_category, distance_category,
-                    days_to_approach, is_high_priority, threat_level, recommended_action,
-                    orbital_insights, size_insights, velocity_insights, distance_insights,
-                    processing_metadata, processed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                MERGE processed_asteroid_insights AS target
+                USING (SELECT ? as raw_asteroid_id, ? as name, ? as risk_score, ? as hazard_level,
+                              ? as size_category, ? as orbit_type, ? as inclination_type,
+                              ? as velocity_category, ? as distance_category, ? as days_to_approach,
+                              ? as is_high_priority, ? as threat_level, ? as recommended_action,
+                              ? as orbital_insights, ? as size_insights, ? as velocity_insights,
+                              ? as distance_insights, ? as processing_metadata, ? as processed_at) AS source
+                ON target.raw_asteroid_id = source.raw_asteroid_id
+                WHEN MATCHED THEN
+                    UPDATE SET 
+                        name = source.name,
+                        risk_score = source.risk_score,
+                        hazard_level = source.hazard_level,
+                        size_category = source.size_category,
+                        orbit_type = source.orbit_type,
+                        inclination_type = source.inclination_type,
+                        velocity_category = source.velocity_category,
+                        distance_category = source.distance_category,
+                        days_to_approach = source.days_to_approach,
+                        is_high_priority = source.is_high_priority,
+                        threat_level = source.threat_level,
+                        recommended_action = source.recommended_action,
+                        orbital_insights = source.orbital_insights,
+                        size_insights = source.size_insights,
+                        velocity_insights = source.velocity_insights,
+                        distance_insights = source.distance_insights,
+                        processing_metadata = source.processing_metadata,
+                        processed_at = source.processed_at,
+                        updated_at = GETUTCDATE()
+                WHEN NOT MATCHED THEN
+                    INSERT (raw_asteroid_id, name, risk_score, hazard_level, size_category,
+                           orbit_type, inclination_type, velocity_category, distance_category,
+                           days_to_approach, is_high_priority, threat_level, recommended_action,
+                           orbital_insights, size_insights, velocity_insights, distance_insights,
+                           processing_metadata, processed_at)
+                    VALUES (source.raw_asteroid_id, source.name, source.risk_score, source.hazard_level,
+                           source.size_category, source.orbit_type, source.inclination_type,
+                           source.velocity_category, source.distance_category, source.days_to_approach,
+                           source.is_high_priority, source.threat_level, source.recommended_action,
+                           source.orbital_insights, source.size_insights, source.velocity_insights,
+                           source.distance_insights, source.processing_metadata, source.processed_at);
                 """
                 
                 values = (
@@ -370,10 +477,15 @@ class AsteroidProcessor:
                     datetime.now()
                 )
                 
-                cursor.execute(sql, values)
+                try:
+                    cursor.execute(sql, values)
+                    logger.debug(f"Processed insights for asteroid {asteroid.get('id')} ({'updated' if cursor.rowcount > 0 else 'inserted'})")
+                except Exception as e:
+                    logger.error(f"Error processing insights for asteroid {asteroid.get('id')}: {e}")
+                    raise
             
             connection.commit()
-            logger.info(f"Successfully stored {len(asteroid_data)} processed insights in SQL Database")
+            logger.info(f"Successfully processed insights for {len(asteroid_data)} asteroids (duplicates handled via UPSERT)")
             
         except Exception as e:
             connection.rollback()

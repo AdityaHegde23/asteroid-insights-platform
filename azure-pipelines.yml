@@ -129,6 +129,56 @@ stages:
                   --parameters location=$(location)
             displayName: 'Deploy Azure Resources with Bicep'
 
+- stage: DatabaseMigration
+  displayName: 'Database Migration'
+  dependsOn: DeployInfrastructure
+  condition: and(succeeded(), eq('${{ parameters.pipelineType }}', 'manual-full'))
+  jobs:
+  - job: RunMigrations
+    displayName: 'Run Database Migrations'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+      displayName: 'Set up Python'
+
+    - script: |
+        pip install pyodbc
+      displayName: 'Install database dependencies'
+
+    - script: |
+        # Run the migration script to add unique constraint
+        python -c "
+        import pyodbc
+        import os
+        
+        # Connect to Azure SQL Database
+        conn_str = os.environ['AZURE_SQL_CONNECTION_STRING']
+        conn = pyodbc.connect(conn_str)
+        cursor = conn.cursor()
+        
+        # Read and execute migration script
+        with open('sql/migration_add_unique_constraint.sql', 'r') as f:
+            migration_sql = f.read()
+        
+        # Split by GO statements and execute each part
+        for statement in migration_sql.split('GO'):
+            if statement.strip():
+                cursor.execute(statement)
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print('Database migration completed successfully!')
+        "
+      displayName: 'Run database migration'
+      env:
+        AZURE_SQL_CONNECTION_STRING: $(AZURE_SQL_CONNECTION_STRING)
+
 - stage: DeployApplication
   displayName: 'Deploy Application'
   dependsOn: Build

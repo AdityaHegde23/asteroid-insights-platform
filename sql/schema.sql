@@ -77,7 +77,9 @@ CREATE TABLE processed_asteroid_insights (
     
     -- Foreign key constraint
     CONSTRAINT FK_processed_raw FOREIGN KEY (raw_asteroid_id) 
-        REFERENCES raw_asteroid_data(id)
+        REFERENCES raw_asteroid_data(id),
+    -- Unique constraint to prevent duplicate processed insights for same asteroid
+    CONSTRAINT UQ_processed_raw_asteroid_id UNIQUE (raw_asteroid_id)
 );
 GO
 
